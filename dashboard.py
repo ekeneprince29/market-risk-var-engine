@@ -101,8 +101,23 @@ if use_sample:
 
 elif uploaded_file is not None:
     df = load_data(uploaded_file)
+
     if df is not None:
+        # FIX COLUMN NAME ISSUES
+        df.columns = (
+            df.columns.astype(str)
+            .str.strip()
+            .str.lower()
+            .str.replace("\ufeff", "", regex=False)
+            .str.replace("﻿", "", regex=False)
+        )
+
+        # FORCE second column to be 'price' if missing header
+        if len(df.columns) == 2 and "price" not in df.columns:
+            df.columns = ["date", "price"]
+
         st.success(f"Loaded file: {uploaded_file.name}")
+        st.write("COLUMNS:", df.columns.tolist())  # TEMP DEBUG
 
 else:
     st.info("Upload a CSV or Excel file, or click **Use Sample Data** to begin.")
