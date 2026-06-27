@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import plotly.express as px
 
 from src.historical_var import historical_var, expected_shortfall
 from src.parametric_var import parametric_var
