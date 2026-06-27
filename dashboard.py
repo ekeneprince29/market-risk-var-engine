@@ -6,10 +6,9 @@ from src.historical_var import historical_var, expected_shortfall
 from src.parametric_var import parametric_var
 from src.monte_carlo_var import monte_carlo_var
 from src.portfolio_var import portfolio_var
-from src.stress_testing import stress_testing
-from src.liquidity_horizon import liquidity_horizon
-from src.backtesting import backtesting
-
+from src.stress_testing import historical_stress, hypothetical_stress
+from src.liquidity_horizon import liquidity_adjusted_var
+from src.backtesting import kupiec_test
 
 st.markdown("""
 ### 📊 Market Risk VaR Engine
@@ -69,33 +68,50 @@ if df is not None:
     if len(df.columns) > 2:
         st.subheader("Portfolio VaR")
 
+        # assume first column is Date / index, rest are prices
         price_data = df.iloc[:, 1:].select_dtypes(include=["number"])
         returns_port = price_data.pct_change().dropna()
 
         if returns_port.empty:
             st.warning("Portfolio returns could not be computed.")
         else:
-            weights = np.array([1 / len(returns_port.columns)] * len(returns_port.columns))
+            weights = np.array(
+                [1 / len(returns_port.columns)] * len(returns_port.columns)
+            )
             st.write("Portfolio VaR (99%):", portfolio_var(returns_port, weights))
 
             # ---------- Stress Testing ----------
             st.subheader("Stress Testing")
             try:
-                st.write("Stress Test Results:", stress_testing(returns_port))
+                st.write(
+                    "Historical Stress (first 5 days):",
+                    historical_stress(returns_port.iloc[:, 0], (0, 5)),
+                )
+                st.write(
+                    "Hypothetical Stress (-10% shock):",
+                    hypothetical_stress(returns_port.iloc[:, 0], -0.10),
+                )
             except Exception as e:
                 st.warning(f"Stress testing could not be computed: {e}")
 
-            # ---------- Liquidity Horizon ----------
+            # ---------- Liquidity Horizon (FRTB) ----------
             st.subheader("Liquidity Horizon (FRTB)")
             try:
-                st.write("Liquidity-Adjusted VaR (99%):", liquidity_horizon(returns_port))
+                base_var = portfolio_var(returns_port, weights)
+                lh_var = liquidity_adjusted_var(base_var, 20)  # 20‑day horizon example
+                st.write("Liquidity-Adjusted VaR (20-day):", lh_var)
             except Exception as e:
                 st.warning(f"Liquidity Horizon could not be computed: {e}")
 
-            # ---------- Backtesting ----------
+            # ---------- Backtesting (Kupiec Test) ----------
             if "price" in df.columns:
                 st.subheader("Backtesting (Kupiec Test)")
                 try:
-                    st.write("Backtesting Results:", backtesting(returns))
+                    # simple example: use a constant VaR series
+                    var_series = pd.Series(
+                        historical_var(returns), index=returns.index
+                    )
+                    results = kupiec_test(returns, var_series)
+                    st.write("Backtesting Results (Kupiec Test):", results)
                 except Exception as e:
                     st.warning(f"Backtesting could not be computed: {e}")
