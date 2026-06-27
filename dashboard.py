@@ -270,7 +270,7 @@ if len(df.columns) > 2:
 
         st.divider()
 
-  # ---------------------------------------------------------
+# ---------------------------------------------------------
 # BACKTESTING (Kupiec Test)
 # ---------------------------------------------------------
 st.header("📉 Backtesting (Kupiec Test)")
@@ -287,8 +287,14 @@ weights = np.array([1 / len(price_data.columns)] * len(price_data.columns))
 # Portfolio returns (1D series)
 port_returns = returns_all.dot(weights)
 
-# Historical VaR series for backtesting
-var_series = pd.Series(historical_var(port_returns), index=port_returns.index)
+# Rolling Historical VaR (99%)
+window = 30  # 30-day rolling window
+var_series = port_returns.rolling(window).apply(lambda x: historical_var(x), raw=False)
+
+# Drop initial NaN values
+valid = (~var_series.isna()) & (~port_returns.isna())
+port_returns = port_returns[valid]
+var_series = var_series[valid]
 
 # Align lengths
 min_len = min(len(port_returns), len(var_series))
@@ -305,4 +311,3 @@ col3.metric("Passed Test", "✅ Yes" if results["passed"] else "❌ No")
 
 st.divider()
 
-st.divider()
