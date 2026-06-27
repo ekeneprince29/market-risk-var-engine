@@ -270,34 +270,39 @@ if len(df.columns) > 2:
 
         st.divider()
 
-       # ---------------------------------------------------------
-# BACKTESTING
+  # ---------------------------------------------------------
+# BACKTESTING (Kupiec Test)
 # ---------------------------------------------------------
 st.header("📉 Backtesting (Kupiec Test)")
 
-# Backtesting ONLY works for single-asset data
-if "price" in df.columns:
+# Use all numeric asset columns (unlimited assets)
+price_data = df.select_dtypes(include=["number"])
 
-    returns_bt = df["price"].pct_change().dropna()
+# Compute returns for all assets
+returns_all = price_data.pct_change().dropna()
 
-    # Historical VaR series for backtesting
-    var_series = pd.Series(
-        [historical_var(returns_bt)],
-        index=[returns_bt.index[-1]]
-    )
+# Equal weights for unlimited assets
+weights = np.array([1 / len(price_data.columns)] * len(price_data.columns))
 
-    # Align lengths (Kupiec test requires equal length arrays)
-    returns_bt = returns_bt[-1:]
-    var_series = var_series[-1:]
+# Portfolio returns (1D series)
+port_returns = returns_all.dot(weights)
 
-    results = kupiec_test(returns_bt, var_series)
+# Historical VaR series for backtesting
+var_series = pd.Series(historical_var(port_returns), index=port_returns.index)
 
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Exceptions", results["exceptions"])
-    col2.metric("LR Statistic", f"{results['LR_statistic']:.4f}")
-    col3.metric("Passed Test", "✅ Yes" if results["passed"] else "❌ No")
+# Align lengths
+min_len = min(len(port_returns), len(var_series))
+port_returns = port_returns[-min_len:]
+var_series = var_series[-min_len:]
 
-else:
-    st.info("Backtesting is only available for single-asset price data.")
+# Run Kupiec Test
+results = kupiec_test(port_returns, var_series)
+
+col1, col2, col3 = st.columns(3)
+col1.metric("Exceptions", results["exceptions"])
+col2.metric("LR Statistic", f"{results['LR_statistic']:.4f}")
+col3.metric("Passed Test", "✅ Yes" if results["passed"] else "❌ No")
+
+st.divider()
 
 st.divider()
