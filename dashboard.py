@@ -110,7 +110,7 @@ elif uploaded_file is not None:
             .str.strip()
             .str.lower()
             .str.replace("\ufeff", "", regex=False)
-            .str.replace("﻿", "", regex=False)
+            .str.replace("", "", regex=False)
         )
         if len(df_temp.columns) == 2 and "price" not in df_temp.columns:
             df_temp.columns = ["date", "price"]
@@ -287,19 +287,13 @@ weights = np.array([1 / len(price_data.columns)] * len(price_data.columns))
 # Portfolio returns (1D series)
 port_returns = returns_all.dot(weights)
 
-# Compute VaR (same logic as before)
-var_value = historical_var(port_returns)
+# Historical VaR series for backtesting
+var_series = pd.Series(historical_var(port_returns), index=port_returns.index)
 
-# Create VaR series
-var_series = pd.Series(var_value, index=port_returns.index)
-
-# FIX: Align VaR with returns by shifting forward one day
-var_series = var_series.shift(1)
-
-# Drop NaN created by shift
-valid = (~var_series.isna()) & (~port_returns.isna())
-port_returns = port_returns[valid]
-var_series = var_series[valid]
+# Align lengths
+min_len = min(len(port_returns), len(var_series))
+port_returns = port_returns[-min_len:]
+var_series = var_series[-min_len:]
 
 # Run Kupiec Test
 results = kupiec_test(port_returns, var_series)
@@ -310,4 +304,3 @@ col2.metric("LR Statistic", f"{results['LR_statistic']:.4f}")
 col3.metric("Passed Test", "✅ Yes" if results["passed"] else "❌ No")
 
 st.divider()
-
