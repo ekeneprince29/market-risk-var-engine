@@ -8,19 +8,16 @@ from src.parametric_var import parametric_var
 from src.monte_carlo_var import monte_carlo_var
 from src.portfolio_var import portfolio_var
 
-# ✔ Correct imports (your actual function names)
 from src.stress_testing import historical_stress, hypothetical_stress
 from src.liquidity_horizon import liquidity_adjusted_var
 from src.backtesting import kupiec_test
 
-# ---------------------- PAGE CONFIG ----------------------
 st.set_page_config(
     page_title="Market Risk VaR Engine",
     page_icon="📊",
     layout="wide"
 )
 
-# ---------------------- SIDEBAR ----------------------
 st.sidebar.title("📊 Market Risk VaR Engine")
 
 dataset_choice = st.sidebar.selectbox(
@@ -51,7 +48,6 @@ section = st.sidebar.radio(
 st.sidebar.markdown("---")
 st.sidebar.markdown("Built for risk analytics and model validation demos.")
 
-# ---------------------- DATA LOADING ----------------------
 df = None
 portfolio_df = None
 
@@ -65,7 +61,6 @@ elif dataset_choice == "Portfolio sample":
 if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
 
-# ---------------------- OVERVIEW ----------------------
 st.markdown("""
 # 📊 Market Risk VaR Engine
 
@@ -88,7 +83,6 @@ else:
 
 st.markdown("---")
 
-# ---------------------- SINGLE ASSET VaR ----------------------
 if section == "Single Asset VaR":
     if df is None or "price" not in df.columns:
         st.warning("Single-asset VaR requires a dataset with a 'price' column.")
@@ -125,7 +119,6 @@ if section == "Single Asset VaR":
             fig.add_hline(y=hvar, line_dash="dash", line_color="red")
             st.plotly_chart(fig, use_container_width=True)
 
-# ---------------------- PORTFOLIO VaR ----------------------
 if section == "Portfolio VaR":
     if portfolio_df is None:
         st.warning("Portfolio VaR requires a portfolio dataset (e.g., Date, Asset_A, Asset_B, Asset_C).")
@@ -155,7 +148,6 @@ if section == "Portfolio VaR":
             )
             st.plotly_chart(fig, use_container_width=True)
 
-# ---------------------- STRESS TESTING ----------------------
 if section == "Stress Testing":
     if portfolio_df is None:
         st.warning("Stress testing requires a portfolio dataset.")
@@ -186,7 +178,6 @@ if section == "Stress Testing":
             fig = px.line(stress_df, y="Returns", title="Base Returns")
             st.plotly_chart(fig, use_container_width=True)
 
-# ---------------------- LIQUIDITY HORIZON ----------------------
 if section == "Liquidity Horizon":
     if portfolio_df is None:
         st.warning("Liquidity Horizon requires a portfolio dataset.")
@@ -224,7 +215,6 @@ if section == "Liquidity Horizon":
             )
             st.plotly_chart(fig, use_container_width=True)
 
-# ---------------------- BACKTESTING ----------------------
 if section == "Backtesting":
     if df is None or "price" not in df.columns:
         st.warning("Backtesting requires a single-asset dataset with a 'price' column.")
@@ -265,7 +255,6 @@ if section == "Backtesting":
             fig.add_hline(y=hvar, line_dash="dash", line_color="red")
             st.plotly_chart(fig, use_container_width=True)
 
-# ---------------------- REPORTS ----------------------
 if section == "Reports":
     st.header("📄 Risk Report (Summary)")
 
