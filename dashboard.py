@@ -33,19 +33,48 @@ st.divider()
 
 # ---------------------- SAFE CSV LOADER ----------------------
 def load_csv_safely(uploaded_file):
+    # Try UTF-8
     try:
+        uploaded_file.seek(0)
         return pd.read_csv(uploaded_file, encoding="utf-8")
-    except UnicodeDecodeError:
-        try:
-            uploaded_file.seek(0)
-            return pd.read_csv(uploaded_file, encoding="ISO-8859-1")
-        except UnicodeDecodeError:
-            try:
-                uploaded_file.seek(0)
-                return pd.read_csv(uploaded_file, encoding="utf-16")
-            except Exception:
-                st.error("❌ Unable to read CSV file. Please upload a valid UTF‑8 or Excel CSV.")
-                return None
+    except Exception:
+        pass
+
+    # Try ISO-8859-1
+    try:
+        uploaded_file.seek(0)
+        return pd.read_csv(uploaded_file, encoding="ISO-8859-1")
+    except Exception:
+        pass
+
+    # Try UTF-16
+    try:
+        uploaded_file.seek(0)
+        return pd.read_csv(uploaded_file, encoding="utf-16")
+    except Exception:
+        pass
+
+    # Try auto delimiter detection
+    try:
+        uploaded_file.seek(0)
+        raw = uploaded_file.read().decode("utf-8", errors="ignore")
+        import csv
+        dialect = csv.Sniffer().sniff(raw.split("\n")[0])
+        uploaded_file.seek(0)
+        return pd.read_csv(uploaded_file, delimiter=dialect.delimiter)
+    except Exception:
+        pass
+
+    # Try Python engine (more forgiving)
+    try:
+        uploaded_file.seek(0)
+        return pd.read_csv(uploaded_file, engine="python", on_bad_lines="skip")
+    except Exception:
+        pass
+
+    # Final fallback
+    st.error("❌ Unable to parse this file. It may not be a valid CSV. Please upload a clean price dataset.")
+    return None
 
 # ---------------------- DATA INPUT ----------------------
 st.header("📁 Data Input")
@@ -133,19 +162,4 @@ if df is not None and len(df.columns) > 2:
         lh_var = liquidity_adjusted_var(port_var, 20)
         st.metric("Liquidity-Adjusted VaR (20-day)", f"{lh_var:.4f}")
 
-        st.divider()
-
-        # ---------------------- BACKTESTING ----------------------
-        if "price" in df.columns:
-            st.header("📉 Backtesting (Kupiec Test)")
-
-            var_series = pd.Series(historical_var(returns), index=returns.index)
-            results = kupiec_test(returns, var_series)
-
-            col1, col2, col3 = st.columns(3)
-
-            col1.metric("Exceptions", results["exceptions"])
-            col2.metric("LR Statistic", f"{results['LR_statistic']:.4f}")
-            col3.metric("Passed Test", "✅ Yes" if results["passed"] else "❌ No")
-
-            st.divider()
+        st.divider
