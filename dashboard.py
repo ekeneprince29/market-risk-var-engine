@@ -31,30 +31,39 @@ A professional dashboard for market risk analytics:
 
 st.divider()
 
-# ---------------------- SAFE CSV LOADER ----------------------
-def load_csv_safely(uploaded_file):
-    # Try UTF-8
+# ---------------------- UNIVERSAL FILE LOADER ----------------------
+def load_data(uploaded_file):
+    filename = uploaded_file.name.lower()
+
+    # Excel support
+    if filename.endswith(".xlsx") or filename.endswith(".xls"):
+        try:
+            uploaded_file.seek(0)
+            return pd.read_excel(uploaded_file)
+        except Exception:
+            st.error("❌ Unable to read Excel file.")
+            return None
+
+    # CSV support
     try:
         uploaded_file.seek(0)
         return pd.read_csv(uploaded_file, encoding="utf-8")
     except Exception:
         pass
 
-    # Try ISO-8859-1
     try:
         uploaded_file.seek(0)
         return pd.read_csv(uploaded_file, encoding="ISO-8859-1")
     except Exception:
         pass
 
-    # Try UTF-16
     try:
         uploaded_file.seek(0)
         return pd.read_csv(uploaded_file, encoding="utf-16")
     except Exception:
         pass
 
-    # Try auto delimiter detection
+    # Auto delimiter detection
     try:
         uploaded_file.seek(0)
         raw = uploaded_file.read().decode("utf-8", errors="ignore")
@@ -65,14 +74,14 @@ def load_csv_safely(uploaded_file):
     except Exception:
         pass
 
-    # Try Python engine (forgiving)
+    # Python engine fallback
     try:
         uploaded_file.seek(0)
         return pd.read_csv(uploaded_file, engine="python", on_bad_lines="skip")
     except Exception:
         pass
 
-    st.error("❌ Unable to parse this file. It may not be a valid CSV.")
+    st.error("❌ Unable to parse this file. Please upload a valid CSV or Excel file.")
     return None
 
 # ---------------------- DATA INPUT ----------------------
@@ -82,7 +91,7 @@ col1, col2 = st.columns([1, 2])
 
 with col1:
     use_sample = st.button("📘 Use Sample Data")
-    uploaded_file = st.file_uploader("Upload CSV price/portfolio data", type=["csv"])
+    uploaded_file = st.file_uploader("Upload CSV or Excel price/portfolio data", type=["csv", "xlsx", "xls"])
 
 df = None
 
@@ -91,12 +100,12 @@ if use_sample:
     st.success("Loaded sample data from data/prices.csv")
 
 elif uploaded_file is not None:
-    df = load_csv_safely(uploaded_file)
+    df = load_data(uploaded_file)
     if df is not None:
-        st.success("Uploaded custom CSV data")
+        st.success(f"Loaded file: {uploaded_file.name}")
 
 else:
-    st.info("Upload a CSV file or click **Use Sample Data** to begin.")
+    st.info("Upload a CSV or Excel file, or click **Use Sample Data** to begin.")
 
 if df is not None:
     st.subheader("🔍 Data Preview")
