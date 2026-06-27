@@ -10,6 +10,7 @@ from src.stress_testing import stress_testing
 from src.liquidity_horizon import liquidity_horizon
 from src.backtesting import backtesting
 
+
 st.markdown("""
 ### 📊 Market Risk VaR Engine
 
