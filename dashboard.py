@@ -31,6 +31,22 @@ A professional dashboard for market risk analytics:
 
 st.divider()
 
+# ---------------------- SAFE CSV LOADER ----------------------
+def load_csv_safely(uploaded_file):
+    try:
+        return pd.read_csv(uploaded_file, encoding="utf-8")
+    except UnicodeDecodeError:
+        try:
+            uploaded_file.seek(0)
+            return pd.read_csv(uploaded_file, encoding="ISO-8859-1")
+        except UnicodeDecodeError:
+            try:
+                uploaded_file.seek(0)
+                return pd.read_csv(uploaded_file, encoding="utf-16")
+            except Exception:
+                st.error("❌ Unable to read CSV file. Please upload a valid UTF‑8 or Excel CSV.")
+                return None
+
 # ---------------------- DATA INPUT ----------------------
 st.header("📁 Data Input")
 
@@ -47,8 +63,9 @@ if use_sample:
     st.success("Loaded sample data from data/prices.csv")
 
 elif uploaded_file is not None:
-    df = pd.read_csv(uploaded_file)
-    st.success("Uploaded custom CSV data")
+    df = load_csv_safely(uploaded_file)
+    if df is not None:
+        st.success("Uploaded custom CSV data")
 
 else:
     st.info("Upload a CSV file or click **Use Sample Data** to begin.")
