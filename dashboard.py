@@ -73,14 +73,18 @@ if df is not None:
         price_data = price_data.select_dtypes(include=["number"])
 
         if price_data.empty:
-            st.warning("No numeric price columns found for portfolio VaR. "
-                       "Please ensure your CSV has numeric price columns.")
+            st.warning(
+                "No numeric price columns found for portfolio VaR. "
+                "Please ensure your CSV has numeric price columns."
+            )
         else:
             returns_port = price_data.pct_change().dropna()
 
             if returns_port.empty:
-                st.warning("Could not compute portfolio returns (all NaN). "
-                           "Check your price data.")
+                st.warning(
+                    "Could not compute portfolio returns (all NaN). "
+                    "Check your price data."
+                )
             else:
                 weights = np.array(
                     [1 / len(returns_port.columns)] * len(returns_port.columns)
