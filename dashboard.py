@@ -7,6 +7,8 @@ from src.historical_var import historical_var, expected_shortfall
 from src.parametric_var import parametric_var
 from src.monte_carlo_var import monte_carlo_var
 from src.portfolio_var import portfolio_var
+
+# ✔ Correct imports (your actual function names)
 from src.stress_testing import historical_stress, hypothetical_stress
 from src.liquidity_horizon import liquidity_adjusted_var
 from src.backtesting import kupiec_test
