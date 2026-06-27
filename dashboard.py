@@ -24,9 +24,10 @@ A professional dashboard for market risk analytics:
 - **Value-at-Risk (VaR)**
 - **Expected Shortfall (ES)**
 - **Monte Carlo Simulation**
-- **Stress Testing**
+- **Stress Testing & Scenario Analysis**
 - **Liquidity Horizon (FRTB)**
-- **Backtesting (Kupiec Test)**  
+- **Backtesting (Kupiec Test)**
+- **Risk Visualization (Charts)**  
 """)
 
 st.divider()
@@ -112,7 +113,7 @@ elif uploaded_file is not None:
             .str.replace("﻿", "", regex=False)
         )
 
-        # FORCE second column to be 'price' if missing header
+        # FORCE second column to be 'price' if missing header in 2-column file
         if len(df.columns) == 2 and "price" not in df.columns:
             df.columns = ["date", "price"]
 
@@ -147,11 +148,27 @@ if df is not None and "price" in df.columns:
 
         st.divider()
 
+        # ---------------------- SINGLE ASSET CHARTS ----------------------
+        st.subheader("📊 Single Asset Charts")
+
+        col_chart1, col_chart2 = st.columns(2)
+
+        with col_chart1:
+            st.markdown("**Price Time Series**")
+            st.line_chart(price_series)
+
+        with col_chart2:
+            st.markdown("**Return Time Series**")
+            st.line_chart(returns)
+
+        st.divider()
+
 # ---------------------- PORTFOLIO VaR ----------------------
 if df is not None and len(df.columns) > 2:
 
     st.header("📊 Portfolio VaR")
 
+    # Use all numeric columns after the first (assumed date)
     price_data = df.iloc[:, 1:].select_dtypes(include=["number"])
     returns_port = price_data.pct_change().dropna()
 
@@ -162,6 +179,25 @@ if df is not None and len(df.columns) > 2:
         port_var = portfolio_var(returns_port, weights)
 
         st.metric("Portfolio VaR (99%)", f"{port_var:.4f}")
+        st.divider()
+
+        # ---------------------- PORTFOLIO CHARTS ----------------------
+        st.subheader("📊 Portfolio Charts")
+
+        # Compute portfolio price and returns
+        port_prices = price_data.dot(weights)
+        port_returns = returns_port.dot(weights)
+
+        col_p1, col_p2 = st.columns(2)
+
+        with col_p1:
+            st.markdown("**Portfolio Price Time Series**")
+            st.line_chart(port_prices)
+
+        with col_p2:
+            st.markdown("**Portfolio Return Time Series**")
+            st.line_chart(port_returns)
+
         st.divider()
 
         # ---------------------- STRESS TESTING ----------------------
@@ -179,6 +215,50 @@ if df is not None and len(df.columns) > 2:
 
         st.divider()
 
+        # ---------------------- STRESS SCENARIO MODULE ----------------------
+        st.header("🧨 Custom Stress Scenarios")
+
+        st.markdown("Define shocks to each asset (in %) and see the impact on portfolio returns and VaR.")
+
+        shock_cols = st.columns(len(price_data.columns))
+        shocks = []
+
+        for i, col_name in enumerate(price_data.columns):
+            with shock_cols[i]:
+                shock = st.slider(
+                    f"{col_name} shock (%)",
+                    min_value=-50.0,
+                    max_value=50.0,
+                    value=0.0,
+                    step=1.0
+                )
+                shocks.append(shock / 100.0)
+
+        shocks = np.array(shocks)
+
+        # Apply shocks to last available prices to simulate one-day stressed move
+        last_prices = price_data.iloc[-1].values
+        stressed_prices = last_prices * (1 + shocks)
+
+        # Compute stressed portfolio value and loss
+        base_port_value = np.dot(last_prices, weights)
+        stressed_port_value = np.dot(stressed_prices, weights)
+        stressed_loss = (base_port_value - stressed_port_value) / base_port_value
+
+        st.markdown("### 📉 Stressed Portfolio Impact")
+        col_s1, col_s2, col_s3 = st.columns(3)
+
+        col_s1.metric("Base Portfolio Value", f"{base_port_value:.2f}")
+        col_s2.metric("Stressed Portfolio Value", f"{stressed_port_value:.2f}")
+        col_s3.metric("One-Day Stressed Loss", f"{stressed_loss:.4%}")
+
+        # Approximate stressed VaR by scaling historical VaR with shock magnitude
+        avg_abs_shock = np.mean(np.abs(shocks))
+        stressed_var = port_var * (1 + avg_abs_shock)
+
+        st.metric("Approx. Stressed VaR (99%)", f"{stressed_var:.4f}")
+        st.divider()
+
         # ---------------------- LIQUIDITY HORIZON ----------------------
         st.header("⏳ Liquidity Horizon (FRTB)")
 
@@ -187,28 +267,17 @@ if df is not None and len(df.columns) > 2:
 
         st.divider()
 
-       # ---------------------- BACKTESTING (Kupiec Test) ----------------------
-if df is not None and len(df.columns) > 2:
+        # ---------------------- BACKTESTING (Kupiec Test) ----------------------
+        st.header("📉 Backtesting (Kupiec Test)")
 
-    st.header("📉 Backtesting (Kupiec Test)")
+        if not port_returns.empty:
+            var_series = pd.Series(historical_var(port_returns), index=port_returns.index)
+            results = kupiec_test(port_returns, var_series)
 
-    # Use portfolio returns instead of single asset
-    price_data = df.iloc[:, 1:].select_dtypes(include=["number"])
-    returns_port = price_data.pct_change().dropna()
+            col1, col2, col3 = st.columns(3)
 
-    if not returns_port.empty:
-        # Compute portfolio VaR series
-        weights = np.array([1 / len(returns_port.columns)] * len(returns_port.columns))
-        port_returns = returns_port.dot(weights)
+            col1.metric("Exceptions", results["exceptions"])
+            col2.metric("LR Statistic", f"{results['LR_statistic']:.4f}")
+            col3.metric("Passed Test", "✅ Yes" if results["passed"] else "❌ No")
 
-        var_series = pd.Series(historical_var(port_returns), index=port_returns.index)
-        results = kupiec_test(port_returns, var_series)
-
-        col1, col2, col3 = st.columns(3)
-
-        col1.metric("Exceptions", results["exceptions"])
-        col2.metric("LR Statistic", f"{results['LR_statistic']:.4f}")
-        col3.metric("Passed Test", "✅ Yes" if results["passed"] else "❌ No")
-
-    st.divider()
-
+            st.divider()
