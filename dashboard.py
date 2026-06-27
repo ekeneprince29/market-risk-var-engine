@@ -53,7 +53,6 @@ if df is not None:
     if "price" in df.columns:
         st.subheader("Single Asset Risk Metrics")
 
-        # ensure price is numeric
         price_series = pd.to_numeric(df["price"], errors="coerce")
         returns = price_series.pct_change().dropna()
 
@@ -65,56 +64,37 @@ if df is not None:
             st.write("Monte Carlo VaR (99%):", monte_carlo_var(returns))
             st.write("Expected Shortfall (99%):", expected_shortfall(returns))
 
-    # ---------- Portfolio VaR (expects multiple numeric columns) ----------
+    # ---------- Portfolio VaR ----------
     if len(df.columns) > 2:
         st.subheader("Portfolio VaR")
 
-        # assume first column is Date / index, rest are prices
-        price_data = df.iloc[:, 1:]
+        price_data = df.iloc[:, 1:].select_dtypes(include=["number"])
+        returns_port = price_data.pct_change().dropna()
 
-        # keep only numeric columns
-        price_data = price_data.select_dtypes(include=["number"])
-
-        if price_data.empty:
-            st.warning(
-                "No numeric price columns found for portfolio VaR. "
-                "Please ensure your CSV has numeric price columns."
-            )
+        if returns_port.empty:
+            st.warning("Portfolio returns could not be computed.")
         else:
-            returns_port = price_data.pct_change().dropna()
+            weights = np.array([1 / len(returns_port.columns)] * len(returns_port.columns))
+            st.write("Portfolio VaR (99%):", portfolio_var(returns_port, weights))
 
-            if returns_port.empty:
-                st.warning(
-                    "Could not compute portfolio returns (all NaN). "
-                    "Check your price data."
-                )
-            else:
-                weights = np.array(
-                    [1 / len(returns_port.columns)] * len(returns_port.columns)
-                )
-                st.write("Portfolio VaR (99%):", portfolio_var(returns_port, weights))
+            # ---------- Stress Testing ----------
+            st.subheader("Stress Testing")
+            try:
+                st.write("Stress Test Results:", stress_testing(returns_port))
+            except Exception as e:
+                st.warning(f"Stress testing could not be computed: {e}")
 
-                # ---------- Stress Testing ----------
-                st.subheader("Stress Testing")
+            # ---------- Liquidity Horizon ----------
+            st.subheader("Liquidity Horizon (FRTB)")
+            try:
+                st.write("Liquidity-Adjusted VaR (99%):", liquidity_horizon(returns_port))
+            except Exception as e:
+                st.warning(f"Liquidity Horizon could not be computed: {e}")
+
+            # ---------- Backtesting ----------
+            if "price" in df.columns:
+                st.subheader("Backtesting (Kupiec Test)")
                 try:
-                    stress_results = stress_testing(returns_port)
-                    st.write("Stress Test Results:", stress_results)
+                    st.write("Backtesting Results:", backtesting(returns))
                 except Exception as e:
-                    st.warning(f"Stress testing could not be computed: {e}")
-
-                # ---------- Liquidity Horizon (FRTB) ----------
-                st.subheader("Liquidity Horizon (FRTB)")
-                try:
-                    lh_var = liquidity_horizon(returns_port)
-                    st.write("Liquidity-Adjusted VaR (99%):", lh_var)
-                except Exception as e:
-                    st.warning(f"Liquidity Horizon could not be computed: {e}")
-
-                # ---------- Backtesting (Kupiec Test) ----------
-                if "price" in df.columns:
-                    st.subheader("Backtesting (Kupiec Test)")
-                    try:
-                        backtest_results = backtesting(returns)
-                        st.write("Backtesting Results (Kupiec Test):", backtest_results)
-                    except Exception as e:
-                        st.warning(f"Backtesting could not be computed: {e}")
+                    st.warning(f"Backtesting could not be computed: {e}")
