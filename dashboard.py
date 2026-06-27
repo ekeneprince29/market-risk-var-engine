@@ -10,108 +10,125 @@ from src.stress_testing import historical_stress, hypothetical_stress
 from src.liquidity_horizon import liquidity_adjusted_var
 from src.backtesting import kupiec_test
 
+# ---------------------- PAGE CONFIG ----------------------
+st.set_page_config(
+    page_title="Market Risk VaR Engine",
+    page_icon="📊",
+    layout="wide"
+)
+
+# ---------------------- HEADER ----------------------
 st.markdown("""
-### 📊 Market Risk VaR Engine
-
-Upload a price or portfolio CSV to run:
-- Value-at-Risk (VaR)
-- Expected Shortfall (ES)
-- Monte Carlo simulations
-- Stress Testing
-- Liquidity Horizon (FRTB)
-- Backtesting (Kupiec Test)
-
-You can upload your own data or use sample data to see the engine in action.
+# 📊 Market Risk VaR Engine  
+A professional dashboard for market risk analytics:
+- **Value-at-Risk (VaR)**
+- **Expected Shortfall (ES)**
+- **Monte Carlo Simulation**
+- **Stress Testing**
+- **Liquidity Horizon (FRTB)**
+- **Backtesting (Kupiec Test)**  
 """)
 
-st.title("Market Risk VaR Engine Dashboard")
-st.subheader("Data Input")
+st.divider()
 
-# --- Data selection: sample or upload ---
-use_sample = st.button("Use sample data")
-uploaded_file = st.file_uploader("Upload CSV price/portfolio data", type=["csv"])
+# ---------------------- DATA INPUT ----------------------
+st.header("📁 Data Input")
+
+col1, col2 = st.columns([1, 2])
+
+with col1:
+    use_sample = st.button("📘 Use Sample Data")
+    uploaded_file = st.file_uploader("Upload CSV price/portfolio data", type=["csv"])
 
 df = None
 
 if use_sample:
     df = pd.read_csv("data/prices.csv")
     st.success("Loaded sample data from data/prices.csv")
-    st.write("Data Preview:", df.head())
 
 elif uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
     st.success("Uploaded custom CSV data")
-    st.write("Data Preview:", df.head())
 
 else:
-    st.info("Upload a CSV file or click 'Use sample data' to begin.")
+    st.info("Upload a CSV file or click **Use Sample Data** to begin.")
 
-# --- Only proceed if we actually have data ---
 if df is not None:
+    st.subheader("🔍 Data Preview")
+    st.dataframe(df.head())
+    st.divider()
 
-    # ---------- Single asset VaR (expects a 'price' column) ----------
-    if "price" in df.columns:
-        st.subheader("Single Asset Risk Metrics")
+# ---------------------- SINGLE ASSET RISK ----------------------
+if df is not None and "price" in df.columns:
 
-        price_series = pd.to_numeric(df["price"], errors="coerce")
-        returns = price_series.pct_change().dropna()
+    st.header("📈 Single Asset Risk Metrics")
 
-        if returns.empty:
-            st.warning("No valid returns could be computed from 'price' column.")
-        else:
-            st.write("Historical VaR (99%):", historical_var(returns))
-            st.write("Parametric VaR (99%):", parametric_var(returns))
-            st.write("Monte Carlo VaR (99%):", monte_carlo_var(returns))
-            st.write("Expected Shortfall (99%):", expected_shortfall(returns))
+    price_series = pd.to_numeric(df["price"], errors="coerce")
+    returns = price_series.pct_change().dropna()
 
-    # ---------- Portfolio VaR ----------
-    if len(df.columns) > 2:
-        st.subheader("Portfolio VaR")
+    if returns.empty:
+        st.warning("No valid returns could be computed from 'price' column.")
+    else:
+        colA, colB, colC, colD = st.columns(4)
 
-        # assume first column is Date / index, rest are prices
-        price_data = df.iloc[:, 1:].select_dtypes(include=["number"])
-        returns_port = price_data.pct_change().dropna()
+        colA.metric("Historical VaR (99%)", f"{historical_var(returns):.4f}")
+        colB.metric("Parametric VaR (99%)", f"{parametric_var(returns):.4f}")
+        colC.metric("Monte Carlo VaR (99%)", f"{monte_carlo_var(returns):.4f}")
+        colD.metric("Expected Shortfall (99%)", f"{expected_shortfall(returns):.4f}")
 
-        if returns_port.empty:
-            st.warning("Portfolio returns could not be computed.")
-        else:
-            weights = np.array(
-                [1 / len(returns_port.columns)] * len(returns_port.columns)
-            )
-            st.write("Portfolio VaR (99%):", portfolio_var(returns_port, weights))
+        st.divider()
 
-            # ---------- Stress Testing ----------
-            st.subheader("Stress Testing")
-            try:
-                st.write(
-                    "Historical Stress (first 5 days):",
-                    historical_stress(returns_port.iloc[:, 0], (0, 5)),
-                )
-                st.write(
-                    "Hypothetical Stress (-10% shock):",
-                    hypothetical_stress(returns_port.iloc[:, 0], -0.10),
-                )
-            except Exception as e:
-                st.warning(f"Stress testing could not be computed: {e}")
+# ---------------------- PORTFOLIO VaR ----------------------
+if df is not None and len(df.columns) > 2:
 
-            # ---------- Liquidity Horizon (FRTB) ----------
-            st.subheader("Liquidity Horizon (FRTB)")
-            try:
-                base_var = portfolio_var(returns_port, weights)
-                lh_var = liquidity_adjusted_var(base_var, 20)  # 20‑day horizon example
-                st.write("Liquidity-Adjusted VaR (20-day):", lh_var)
-            except Exception as e:
-                st.warning(f"Liquidity Horizon could not be computed: {e}")
+    st.header("📊 Portfolio VaR")
 
-            # ---------- Backtesting (Kupiec Test) ----------
-            if "price" in df.columns:
-                st.subheader("Backtesting (Kupiec Test)")
-                try:
-                    # simple example: use a constant VaR series
-                    var_series = pd.Series(
-                        historical_var(returns), index=returns.index
-                    )
-                    results = kupiec_test(returns, var_series)
-                    st.write("Backtesting Results (Kupiec Test):", results)
-                except Exception as e:
-                    st.warning(f"Backtesting could not be computed: {e}")
+    price_data = df.iloc[:, 1:].select_dtypes(include=["number"])
+    returns_port = price_data.pct_change().dropna()
+
+    if returns_port.empty:
+        st.warning("Portfolio returns could not be computed.")
+    else:
+        weights = np.array([1 / len(returns_port.columns)] * len(returns_port.columns))
+        port_var = portfolio_var(returns_port, weights)
+
+        st.metric("Portfolio VaR (99%)", f"{port_var:.4f}")
+        st.divider()
+
+        # ---------------------- STRESS TESTING ----------------------
+        st.header("⚠️ Stress Testing")
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            hist_stress = historical_stress(returns_port.iloc[:, 0], (0, 5))
+            st.metric("Historical Stress (first 5 days)", f"{hist_stress:.4f}")
+
+        with col2:
+            hypo_stress = hypothetical_stress(returns_port.iloc[:, 0], -0.10)
+            st.metric("Hypothetical Stress (-10%)", f"{hypo_stress:.4f}")
+
+        st.divider()
+
+        # ---------------------- LIQUIDITY HORIZON ----------------------
+        st.header("⏳ Liquidity Horizon (FRTB)")
+
+        lh_var = liquidity_adjusted_var(port_var, 20)
+        st.metric("Liquidity-Adjusted VaR (20-day)", f"{lh_var:.4f}")
+
+        st.divider()
+
+        # ---------------------- BACKTESTING ----------------------
+        if "price" in df.columns:
+            st.header("📉 Backtesting (Kupiec Test)")
+
+            var_series = pd.Series(historical_var(returns), index=returns.index)
+            results = kupiec_test(returns, var_series)
+
+            col1, col2, col3 = st.columns(3)
+
+            col1.metric("Exceptions", results["exceptions"])
+            col2.metric("LR Statistic", f"{results['LR_statistic']:.4f}")
+            col3.metric("Passed Test", "✅ Yes" if results["passed"] else "❌ No")
+
+            st.divider()
