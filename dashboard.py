@@ -103,6 +103,19 @@ if use_sample:
 elif uploaded_file is not None:
     df = load_data(uploaded_file)
 
+# ---------------------- SESSION STATE FIX ----------------------
+if "df" not in st.session_state:
+    st.session_state.df = None
+
+# Save data into session state so sliders don't reset the app
+if use_sample:
+    st.session_state.df = pd.read_csv("data/prices.csv")
+elif uploaded_file is not None:
+    st.session_state.df = df  # whatever was loaded
+
+# Always read df from session state from this point forward
+df = st.session_state.df
+
     if df is not None:
         # FIX COLUMN NAME ISSUES
         df.columns = (
