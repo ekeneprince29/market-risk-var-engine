@@ -137,4 +137,43 @@ if df is not None and len(df.columns) > 2:
         weights = np.array([1 / len(returns_port.columns)] * len(returns_port.columns))
         port_var = portfolio_var(returns_port, weights)
 
-        st.metric("Portfolio
+        st.metric("Portfolio VaR (99%)", f"{port_var:.4f}")
+        st.divider()
+
+        # ---------------------- STRESS TESTING ----------------------
+        st.header("⚠️ Stress Testing")
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            hist_stress = historical_stress(returns_port.iloc[:, 0], (0, 5))
+            st.metric("Historical Stress (first 5 days)", f"{hist_stress:.4f}")
+
+        with col2:
+            hypo_stress = hypothetical_stress(returns_port.iloc[:, 0], -0.10)
+            st.metric("Hypothetical Stress (-10%)", f"{hypo_stress:.4f}")
+
+        st.divider()
+
+        # ---------------------- LIQUIDITY HORIZON ----------------------
+        st.header("⏳ Liquidity Horizon (FRTB)")
+
+        lh_var = liquidity_adjusted_var(port_var, 20)
+        st.metric("Liquidity-Adjusted VaR (20-day)", f"{lh_var:.4f}")
+
+        st.divider()
+
+        # ---------------------- BACKTESTING ----------------------
+        if "price" in df.columns:
+            st.header("📉 Backtesting (Kupiec Test)")
+
+            var_series = pd.Series(historical_var(returns), index=returns.index)
+            results = kupiec_test(returns, var_series)
+
+            col1, col2, col3 = st.columns(3)
+
+            col1.metric("Exceptions", results["exceptions"])
+            col2.metric("LR Statistic", f"{results['LR_statistic']:.4f}")
+            col3.metric("Passed Test", "✅ Yes" if results["passed"] else "❌ No")
+
+            st.divider()
