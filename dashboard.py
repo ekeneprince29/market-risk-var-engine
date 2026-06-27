@@ -102,7 +102,6 @@ if use_sample:
 
 elif uploaded_file is not None:
     df = load_data(uploaded_file)
-
 # ---------------------- SESSION STATE FIX ----------------------
 if "df" not in st.session_state:
     st.session_state.df = None
