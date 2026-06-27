@@ -14,7 +14,7 @@ from src.backtesting import kupiec_test
 # PAGE CONFIG
 # ---------------------------------------------------------
 st.set_page_config(
-    page_title="Market Risk VaR Engine",
+    page_title="Market Risk Analytics Platform",
     page_icon="📊",
     layout="wide"
 )
@@ -23,7 +23,7 @@ st.set_page_config(
 # HEADER
 # ---------------------------------------------------------
 st.markdown("""
-# 📊 Market Risk VaR Engine  
+# 📊 Market Risk Analytics Platform  
 A professional dashboard for market risk analytics:
 - **Value-at-Risk (VaR)**
 - **Expected Shortfall (ES)**
