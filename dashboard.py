@@ -270,18 +270,34 @@ if len(df.columns) > 2:
 
         st.divider()
 
-        # ---------------------------------------------------------
-        # BACKTESTING
-        # ---------------------------------------------------------
-        st.header("📉 Backtesting (Kupiec Test)")
+       # ---------------------------------------------------------
+# BACKTESTING
+# ---------------------------------------------------------
+st.header("📉 Backtesting (Kupiec Test)")
 
-        var_series = pd.Series(historical_var(returns_port), index=returns_port.index)
-        results = kupiec_test(returns_port, var_series)
+# Backtesting ONLY works for single-asset data
+if "price" in df.columns:
 
-        col1, col2, col3 = st.columns(3)
+    returns_bt = df["price"].pct_change().dropna()
 
-        col1.metric("Exceptions", results["exceptions"])
-        col2.metric("LR Statistic", f"{results['LR_statistic']:.4f}")
-        col3.metric("Passed Test", "✅ Yes" if results["passed"] else "❌ No")
+    # Historical VaR series for backtesting
+    var_series = pd.Series(
+        [historical_var(returns_bt)],
+        index=[returns_bt.index[-1]]
+    )
 
-        st.divider()
+    # Align lengths (Kupiec test requires equal length arrays)
+    returns_bt = returns_bt[-1:]
+    var_series = var_series[-1:]
+
+    results = kupiec_test(returns_bt, var_series)
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Exceptions", results["exceptions"])
+    col2.metric("LR Statistic", f"{results['LR_statistic']:.4f}")
+    col3.metric("Passed Test", "✅ Yes" if results["passed"] else "❌ No")
+
+else:
+    st.info("Backtesting is only available for single-asset price data.")
+
+st.divider()
