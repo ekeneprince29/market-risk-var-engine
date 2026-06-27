@@ -6,6 +6,9 @@ from src.historical_var import historical_var, expected_shortfall
 from src.parametric_var import parametric_var
 from src.monte_carlo_var import monte_carlo_var
 from src.portfolio_var import portfolio_var
+from src.stress_testing import stress_testing
+from src.liquidity_horizon import liquidity_horizon
+from src.backtesting import backtesting
 
 st.markdown("""
 ### 📊 Market Risk VaR Engine
@@ -90,3 +93,28 @@ if df is not None:
                     [1 / len(returns_port.columns)] * len(returns_port.columns)
                 )
                 st.write("Portfolio VaR (99%):", portfolio_var(returns_port, weights))
+
+                # ---------- Stress Testing ----------
+                st.subheader("Stress Testing")
+                try:
+                    stress_results = stress_testing(returns_port)
+                    st.write("Stress Test Results:", stress_results)
+                except Exception as e:
+                    st.warning(f"Stress testing could not be computed: {e}")
+
+                # ---------- Liquidity Horizon (FRTB) ----------
+                st.subheader("Liquidity Horizon (FRTB)")
+                try:
+                    lh_var = liquidity_horizon(returns_port)
+                    st.write("Liquidity-Adjusted VaR (99%):", lh_var)
+                except Exception as e:
+                    st.warning(f"Liquidity Horizon could not be computed: {e}")
+
+                # ---------- Backtesting (Kupiec Test) ----------
+                if "price" in df.columns:
+                    st.subheader("Backtesting (Kupiec Test)")
+                    try:
+                        backtest_results = backtesting(returns)
+                        st.write("Backtesting Results (Kupiec Test):", backtest_results)
+                    except Exception as e:
+                        st.warning(f"Backtesting could not be computed: {e}")
