@@ -187,17 +187,28 @@ if df is not None and len(df.columns) > 2:
 
         st.divider()
 
-        # ---------------------- BACKTESTING ----------------------
-        if "price" in df.columns:
-            st.header("📉 Backtesting (Kupiec Test)")
+       # ---------------------- BACKTESTING (Kupiec Test) ----------------------
+if df is not None and len(df.columns) > 2:
 
-            var_series = pd.Series(historical_var(returns), index=returns.index)
-            results = kupiec_test(returns, var_series)
+    st.header("📉 Backtesting (Kupiec Test)")
 
-            col1, col2, col3 = st.columns(3)
+    # Use portfolio returns instead of single asset
+    price_data = df.iloc[:, 1:].select_dtypes(include=["number"])
+    returns_port = price_data.pct_change().dropna()
 
-            col1.metric("Exceptions", results["exceptions"])
-            col2.metric("LR Statistic", f"{results['LR_statistic']:.4f}")
-            col3.metric("Passed Test", "✅ Yes" if results["passed"] else "❌ No")
+    if not returns_port.empty:
+        # Compute portfolio VaR series
+        weights = np.array([1 / len(returns_port.columns)] * len(returns_port.columns))
+        port_returns = returns_port.dot(weights)
 
-            st.divider()
+        var_series = pd.Series(historical_var(port_returns), index=port_returns.index)
+        results = kupiec_test(port_returns, var_series)
+
+        col1, col2, col3 = st.columns(3)
+
+        col1.metric("Exceptions", results["exceptions"])
+        col2.metric("LR Statistic", f"{results['LR_statistic']:.4f}")
+        col3.metric("Passed Test", "✅ Yes" if results["passed"] else "❌ No")
+
+    st.divider()
+
