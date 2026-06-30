@@ -8,7 +8,7 @@ https://market-risk-var-engine-b3gevdcildadadkebe8ker.streamlit.app/
 A full institutional‑grade Market Risk analytics engine implementing VaR, ES, Monte Carlo, Stress Testing, Liquidity Horizon (FRTB), Backtesting, and interactive scenario analysis. Includes a Streamlit dashboard with risk visualization (charts) and custom stress scenarios.
 
 
-Market Risk analytics engine built in Python.
+Market Risk analytics built in Python.
 
 Implements industry‑standard methodologies used across banks, trading desks, and treasury functions.
 
